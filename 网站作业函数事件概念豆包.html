@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>任务管理应用</title>
+  <style>
+    /* 基础样式 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+    
+    body {
+      background-color: #f5f7fa;
+      color: #333;
+      line-height: 1.6;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    header {
+      background-color: #4a6fa5;
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+    }
+    
+    .task-form {
+      padding: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .form-group {
+      display: flex;
+      margin-bottom: 15px;
+    }
+    
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px 0 0 4px;
+      font-size: 16px;
+    }
+    
+    button {
+      padding: 10px 15px;
+      background-color: #4a6fa5;
+      color: white;
+      border: none;
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background-color: #3a5ca5;
+    }
+    
+    .task-filter {
+      padding: 15px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .filter-btn {
+      background-color: transparent;
+      color: #4a6fa5;
+      border: 1px solid #4a6fa5;
+      border-radius: 4px;
+      padding: 5px 10px;
+      margin-left: 5px;
+    }
+    
+    .filter-btn.active {
+      background-color: #4a6fa5;
+      color: white;
+    }
+    
+    .task-list {
+      padding: 0;
+    }
+    
+    .task-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      border-bottom: 1px solid #eee;
+      list-style: none;
+    }
+    
+    .task-item:last-child {
+      border-bottom: none;
+    }
+    
+    .task-item.completed {
+      background-color: #e8f5e9;
+      text-decoration: line-through;
+      color: #888;
+    }
+    
+    .task-content {
+      flex: 1;
+      margin-right: 10px;
+    }
+    
+    .delete-btn {
+      background-color: #f44336;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0;
+    }
+    
+    .delete-btn:hover {
+      background-color: #d32f2f;
+    }
+    
+    .empty-state {
+      padding: 30px;
+      text-align: center;
+      color: #888;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>任务管理器</h1>
+    </header>
+    
+    <div class="task-form">
+      <div class="form-group">
+        <input type="text" id="task-input" placeholder="添加新任务...">
+        <button id="add-task">添加任务</button>
+      </div>
+    </div>
+    
+    <div class="task-filter">
+      <span>筛选任务:</span>
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="active">进行中</button>
+      <button class="filter-btn" data-filter="completed">已完成</button>
+    </div>
+    
+    <ul class="task-list" id="task-list">
+      <!-- 任务将动态添加到这里 -->
+    </ul>
+    
+    <div class="empty-state" id="empty-state">
+      暂无任务，添加第一个任务吧！
+    </div>
+  </div>
+
+  <script>
+    // 任务管理类 - 体现面向对象编程概念
+    class TaskManager {
+      constructor() {
+        this.tasks = [];
+        this.currentFilter = 'all';
+        
+        // DOM元素
+        this.taskInput = document.getElementById('task-input');
+        this.addTaskBtn = document.getElementById('add-task');
+        this.taskList = document.getElementById('task-list');
+        this.emptyState = document.getElementById('empty-state');
+        this.filterBtns = document.querySelectorAll('.filter-btn');
+        
+        // 初始化事件监听
+        this.initEventListeners();
+      }
+      
+      // 初始化事件监听函数 - 体现事件驱动编程概念
+      initEventListeners() {
+        // 添加任务按钮点击事件
+        this.addTaskBtn.addEventListener('click', () => this.addTask());
+        
+        // 任务输入框回车事件
+        this.taskInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            this.addTask();
+          }
+        });
+        
+        // 筛选按钮点击事件
+        this.filterBtns.forEach(btn => {
+          btn.addEventListener('click', () => this.filterTasks(btn.dataset.filter));
+        });
+        
+        // 任务列表委托事件 - 体现事件委托概念
+        this.taskList.addEventListener('click', (e) => {
+          const taskItem = e.target.closest('.task-item');
+          const deleteBtn = e.target.closest('.delete-btn');
+          
+          if (taskItem) {
+            this.toggleTaskStatus(taskItem);
+          } else if (deleteBtn) {
+            this.deleteTask(deleteBtn.closest('.task-item'));
+          }
+        });
+      }
+      
+      // 添加任务函数 - 体现函数复用概念
+      addTask() {
+        const taskText = this.taskInput.value.trim();
+        if (!taskText) return;
+        
+        const newTask = {
+          id: Date.now(),
+          text: taskText,
+          completed: false
+        };
+        
+        this.tasks.push(newTask);
+        this.renderTask(newTask);
+        this.taskInput.value = '';
+        this.updateEmptyState();
+      }
+      
+      // 渲染单个任务函数
+      renderTask(task) {
+        const taskItem = document.createElement('li');
+        taskItem.className = `task-item${task.completed ? ' completed' : ''}`;
+        taskItem.dataset.id = task.id;
+        
+        taskItem.innerHTML = `
+          <div class="task-content">${task.text}</div>
+          <button class="delete-btn">删除</button>
+        `;
+        
+        this.taskList.appendChild(taskItem);
+      }
+      
+      // 切换任务状态函数
+      toggleTaskStatus(taskItem) {
+        const taskId = parseInt(taskItem.dataset.id);
+        const task = this.tasks.find(t => t.id === taskId);
+        
+        if (task) {
+          task.completed = !task.completed;
+          taskItem.classList.toggle('completed', task.completed);
+        }
+      }
+      
+      // 删除任务函数
+      deleteTask(taskItem) {
+        const taskId = parseInt(taskItem.dataset.id);
+        this.tasks = this.tasks.filter(t => t.id !== taskId);
+        taskItem.remove();
+        this.updateEmptyState();
+      }
+      
+      // 筛选任务函数
+      filterTasks(filter) {
+        this.currentFilter = filter;
+        
+        // 更新筛选按钮状态
+        this.filterBtns.forEach(btn => {
+          btn.classList.remove('active');
+          if (btn.dataset.filter === filter) {
+            btn.classList.add('active');
+          }
+        });
+        
+        // 过滤并重新渲染任务
+        this.taskList.innerHTML = '';
+        const filteredTasks = this.filterTasksByStatus(filter);
+        
+        filteredTasks.forEach(task => {
+          this.renderTask(task);
+        });
+        
+        this.updateEmptyState();
+      }
+      
+      // 按状态筛选任务的辅助函数
+      filterTasksByStatus(filter) {
+        if (filter === 'all') {
+          return this.tasks;
+        } else if (filter === 'active') {
+          return this.tasks.filter(task => !task.completed);
+        } else if (filter === 'completed') {
+          return this.tasks.filter(task => task.completed);
+        }
+        return this.tasks;
+      }
+      
+      // 更新空状态显示函数
+      updateEmptyState() {
+        const hasTasks = this.tasks.length > 0;
+        this.emptyState.style.display = hasTasks ? 'none' : 'block';
+      }
+    }
+    
+    // 初始化应用 - 体现程序入口概念
+    document.addEventListener('DOMContentLoaded', () => {
+      const taskManager = new TaskManager();
+    });
+  </script>
+</body>
+</html>
